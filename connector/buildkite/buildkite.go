@@ -1,4 +1,4 @@
-// Package oidc implements logging in through OpenID Connect providers.
+// This is basically a simplified/opinated version of the OIDC connector
 package buildkite
 
 import (
@@ -77,16 +77,6 @@ type Config struct {
 	// This setting allows you to override the default behavior of Dex and enforce the mappings defined in `claimMapping`.
 	OverrideClaimMapping bool `json:"overrideClaimMapping"` // defaults to false
 
-	ClaimMapping struct {
-		// Configurable key which contains the preferred username claims
-		PreferredUsernameKey string `json:"preferred_username"` // defaults to "preferred_username"
-
-		// Configurable key which contains the email claims
-		EmailKey string `json:"email"` // defaults to "email"
-
-		// Configurable key which contains the groups claims
-		GroupsKey string `json:"groups"` // defaults to "groups"
-	} `json:"claimMapping"`
 }
 
 // Domains that don't support basic auth. golang.org/x/oauth2 has an internal
@@ -186,9 +176,6 @@ func (c *Config) Open(id string, logger log.Logger) (conn connector.Connector, e
 		userIDKey:                 c.UserIDKey,
 		userNameKey:               c.UserNameKey,
 		overrideClaimMapping:      c.OverrideClaimMapping,
-		preferredUsernameKey:      c.ClaimMapping.PreferredUsernameKey,
-		emailKey:                  c.ClaimMapping.EmailKey,
-		groupsKey:                 c.ClaimMapping.GroupsKey,
 	}, nil
 }
 
@@ -392,29 +379,32 @@ func (c *oidcConnector) createIdentity(ctx context.Context, identity connector.I
 	}
 
 	var groups []string
-	if c.insecureEnableGroups {
-		groupsKey := "groups"
-		vs, found := claims[groupsKey].([]interface{})
-		if (!found || c.overrideClaimMapping) && c.groupsKey != "" {
-			groupsKey = c.groupsKey
-			vs, found = claims[groupsKey].([]interface{})
-		}
+	// if c.insecureEnableGroups {
+	// groupsKey := "groups"
+	// vs, found := claims[groupsKey].([]interface{})
+	// if (!found || c.overrideClaimMapping) && c.groupsKey != "" {
+	// groupsKey = c.groupsKey
+	// vs, found = claims[groupsKey].([]interface{})
+	// }
+	//
+	// Fallback when claims[groupsKey] is a string instead of an array of strings.
+	// if g, b := claims[groupsKey].(string); b {
+	// groups = []string{g}
+	// }
+	//
+	// if found {
+	// for _, v := range vs {
+	// if s, ok := v.(string); ok {
+	// groups = append(groups, s)
+	// } else {
+	// return identity, fmt.Errorf("malformed \"%v\" claim", groupsKey)
+	// }
+	// }
+	// }
+	// }
 
-		// Fallback when claims[groupsKey] is a string instead of an array of strings.
-		if g, b := claims[groupsKey].(string); b {
-			groups = []string{g}
-		}
-
-		if found {
-			for _, v := range vs {
-				if s, ok := v.(string); ok {
-					groups = append(groups, s)
-				} else {
-					return identity, fmt.Errorf("malformed \"%v\" claim", groupsKey)
-				}
-			}
-		}
-	}
+	groups = append(groups, fmt.Sprintf("bk::%v::%v", claims["organization_slug"], claims["pipeline_slug"]))
+	groups = append(groups, fmt.Sprintf("bk::%v::%v::%v", claims["organization_slug"], claims["pipeline_slug"], claims["build_branch"]))
 
 	cd := connectorData{
 		RefreshToken: []byte(token.RefreshToken),

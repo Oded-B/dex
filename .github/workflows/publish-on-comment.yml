@@ -11,7 +11,7 @@ jobs:
     if: github.event.issue.pull_request && contains(github.event.comment.body, '/publish') && github.event.comment.user.login == 'Oded-B'
     uses: ./.github/workflows/artifacts.yaml
     with:
-      publish: ${{ github.event_name == 'push' }}
+      publish: true
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}

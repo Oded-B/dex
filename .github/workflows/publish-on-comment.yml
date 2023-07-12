@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+
+  artifacts:
+    name: Artifacts
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '/publish') && github.event.comment.user.login == 'Oded-B'
+    uses: ./.github/workflows/artifacts.yaml
+    with:
+      publish: ${{ github.event_name == 'push' }}
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      security-events: write

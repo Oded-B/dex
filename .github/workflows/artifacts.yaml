@@ -64,7 +64,7 @@ jobs:
 
       - name: Set image name
         id: image-name
-        run: echo "value=ghcr.io/${{ github.repository }}" >> "$GITHUB_OUTPUT"
+        run: echo "value=ghcr.io/${{ lowercase(github.repository) }}" >> "$GITHUB_OUTPUT"
 
       - name: Gather build metadata
         id: meta
@@ -76,7 +76,7 @@ jobs:
             latest = false
           tags: |
             type=ref,event=branch,enable=${{ matrix.variant == 'alpine' }}
-            type=ref,event=pr,prefix=pr-,enable=${{ matrix.variant == 'alpine' }}
+            type=sha,event=pr,prefix=pr-,enable=${{ matrix.variant == 'alpine' }}
             type=semver,pattern={{raw}},enable=${{ matrix.variant == 'alpine' }}
             type=raw,value=latest,enable=${{ github.ref_name == github.event.repository.default_branch && matrix.variant == 'alpine' }}
             type=ref,event=branch,suffix=-${{ matrix.variant }}

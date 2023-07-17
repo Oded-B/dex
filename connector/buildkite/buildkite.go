@@ -152,7 +152,7 @@ func (c *Config) Open(id string, logger log.Logger) (conn connector.Connector, e
 	}
 
 	clientID := c.ClientID
-	return &oidcConnector{
+	return &buildkiteConnector{
 		provider:    provider,
 		redirectURI: c.RedirectURI,
 		oauth2Config: &oauth2.Config{
@@ -180,11 +180,11 @@ func (c *Config) Open(id string, logger log.Logger) (conn connector.Connector, e
 }
 
 var (
-	_ connector.CallbackConnector = (*oidcConnector)(nil)
-	_ connector.RefreshConnector  = (*oidcConnector)(nil)
+	_ connector.CallbackConnector = (*buildkiteConnector)(nil)
+	_ connector.RefreshConnector  = (*buildkiteConnector)(nil)
 )
 
-type oidcConnector struct {
+type buildkiteConnector struct {
 	provider                  *oidc.Provider
 	redirectURI               string
 	oauth2Config              *oauth2.Config
@@ -205,12 +205,12 @@ type oidcConnector struct {
 	groupsKey                 string
 }
 
-func (c *oidcConnector) Close() error {
+func (c *buildkiteConnector) Close() error {
 	c.cancel()
 	return nil
 }
 
-func (c *oidcConnector) LoginURL(s connector.Scopes, callbackURL, state string) (string, error) {
+func (c *buildkiteConnector) LoginURL(s connector.Scopes, callbackURL, state string) (string, error) {
 	if c.redirectURI != callbackURL {
 		return "", fmt.Errorf("expected callback URL %q did not match the URL in the config %q", callbackURL, c.redirectURI)
 	}
@@ -248,7 +248,7 @@ const (
 	exchangeCaller
 )
 
-func (c *oidcConnector) HandleCallback(s connector.Scopes, r *http.Request) (identity connector.Identity, err error) {
+func (c *buildkiteConnector) HandleCallback(s connector.Scopes, r *http.Request) (identity connector.Identity, err error) {
 	q := r.URL.Query()
 	if errType := q.Get("error"); errType != "" {
 		return identity, &oauth2Error{errType, q.Get("error_description")}
@@ -258,17 +258,17 @@ func (c *oidcConnector) HandleCallback(s connector.Scopes, r *http.Request) (ide
 
 	token, err := c.oauth2Config.Exchange(ctx, q.Get("code"))
 	if err != nil {
-		return identity, fmt.Errorf("oidc: failed to get token: %v", err)
+		return identity, fmt.Errorf("buildkite: failed to get token: %v", err)
 	}
 	return c.createIdentity(ctx, identity, token, createCaller)
 }
 
 // Refresh is used to refresh a session with the refresh token provided by the IdP
-func (c *oidcConnector) Refresh(ctx context.Context, s connector.Scopes, identity connector.Identity) (connector.Identity, error) {
+func (c *buildkiteConnector) Refresh(ctx context.Context, s connector.Scopes, identity connector.Identity) (connector.Identity, error) {
 	cd := connectorData{}
 	err := json.Unmarshal(identity.ConnectorData, &cd)
 	if err != nil {
-		return identity, fmt.Errorf("oidc: failed to unmarshal connector data: %v", err)
+		return identity, fmt.Errorf("buildkite: failed to unmarshal connector data: %v", err)
 	}
 
 	ctx = context.WithValue(ctx, oauth2.HTTPClient, c.httpClient)
@@ -279,12 +279,12 @@ func (c *oidcConnector) Refresh(ctx context.Context, s connector.Scopes, identit
 	}
 	token, err := c.oauth2Config.TokenSource(ctx, t).Token()
 	if err != nil {
-		return identity, fmt.Errorf("oidc: failed to get refresh token: %v", err)
+		return identity, fmt.Errorf("buildkite: failed to get refresh token: %v", err)
 	}
 	return c.createIdentity(ctx, identity, token, refreshCaller)
 }
 
-func (c *oidcConnector) TokenIdentity(ctx context.Context, subjectTokenType, subjectToken string) (connector.Identity, error) {
+func (c *buildkiteConnector) TokenIdentity(ctx context.Context, subjectTokenType, subjectToken string) (connector.Identity, error) {
 	var identity connector.Identity
 	token := &oauth2.Token{
 		AccessToken: subjectToken,
@@ -292,40 +292,40 @@ func (c *oidcConnector) TokenIdentity(ctx context.Context, subjectTokenType, sub
 	return c.createIdentity(ctx, identity, token, exchangeCaller)
 }
 
-func (c *oidcConnector) createIdentity(ctx context.Context, identity connector.Identity, token *oauth2.Token, caller caller) (connector.Identity, error) {
+func (c *buildkiteConnector) createIdentity(ctx context.Context, identity connector.Identity, token *oauth2.Token, caller caller) (connector.Identity, error) {
 	var claims map[string]interface{}
 
 	if rawIDToken, ok := token.Extra("id_token").(string); ok {
 		idToken, err := c.verifier.Verify(ctx, rawIDToken)
 		if err != nil {
-			return identity, fmt.Errorf("oidc: failed to verify ID Token: %v", err)
+			return identity, fmt.Errorf("buildkite: failed to verify ID Token: %v", err)
 		}
 
 		if err := idToken.Claims(&claims); err != nil {
-			return identity, fmt.Errorf("oidc: failed to decode claims: %v", err)
+			return identity, fmt.Errorf("buildkite: failed to decode claims: %v", err)
 		}
 	} else if caller == exchangeCaller {
 		// AccessToken here could be either an id token or an access token
 		idToken, err := c.provider.Verifier(&oidc.Config{SkipClientIDCheck: true}).Verify(ctx, token.AccessToken)
 		if err != nil {
-			return identity, fmt.Errorf("oidc: failed to verify token: %v", err)
+			return identity, fmt.Errorf("buildkite: failed to verify token: %v", err)
 		}
 		if err := idToken.Claims(&claims); err != nil {
-			return identity, fmt.Errorf("oidc: failed to decode claims: %v", err)
+			return identity, fmt.Errorf("buildkite: failed to decode claims: %v", err)
 		}
 	} else if caller != refreshCaller {
 		// ID tokens aren't mandatory in the reply when using a refresh_token grant
-		return identity, errors.New("oidc: no id_token in token response")
+		return identity, errors.New("buildkite: no id_token in token response")
 	}
 
 	// We immediately want to run getUserInfo if configured before we validate the claims
 	if c.getUserInfo {
 		userInfo, err := c.provider.UserInfo(ctx, oauth2.StaticTokenSource(token))
 		if err != nil {
-			return identity, fmt.Errorf("oidc: error loading userinfo: %v", err)
+			return identity, fmt.Errorf("buildkite: error loading userinfo: %v", err)
 		}
 		if err := userInfo.Claims(&claims); err != nil {
-			return identity, fmt.Errorf("oidc: failed to decode userinfo claims: %v", err)
+			return identity, fmt.Errorf("buildkite: failed to decode userinfo claims: %v", err)
 		}
 	}
 
@@ -412,7 +412,7 @@ func (c *oidcConnector) createIdentity(ctx context.Context, identity connector.I
 
 	connData, err := json.Marshal(&cd)
 	if err != nil {
-		return identity, fmt.Errorf("oidc: failed to encode connector data: %v", err)
+		return identity, fmt.Errorf("buildkite: failed to encode connector data: %v", err)
 	}
 
 	identity = connector.Identity{
@@ -428,7 +428,7 @@ func (c *oidcConnector) createIdentity(ctx context.Context, identity connector.I
 	if c.userIDKey != "" {
 		userID, found := claims[c.userIDKey].(string)
 		if !found {
-			return identity, fmt.Errorf("oidc: not found %v claim", c.userIDKey)
+			return identity, fmt.Errorf("buildkite: not found %v claim", c.userIDKey)
 		}
 		identity.UserID = userID
 	}

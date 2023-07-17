@@ -388,16 +388,16 @@ func newToken(key *jose.JSONWebKey, claims map[string]interface{}) (string, erro
 	return signature.CompactSerialize()
 }
 
-func newConnector(config Config) (*oidcConnector, error) {
+func newConnector(config Config) (*buildkiteConnector, error) {
 	logger := logrus.New()
 	conn, err := config.Open("id", logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to open: %v", err)
 	}
 
-	oidcConn, ok := conn.(*oidcConnector)
+	oidcConn, ok := conn.(*buildkiteConnector)
 	if !ok {
-		return nil, errors.New("failed to convert to oidcConnector")
+		return nil, errors.New("failed to convert to buildkiteConnector")
 	}
 
 	return oidcConn, nil

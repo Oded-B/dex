@@ -76,7 +76,6 @@ type Config struct {
 	// i.e. if there are 'email' and `preferred_email` claims available, by default Dex will always use the `email` claim independent of the ClaimMapping.EmailKey.
 	// This setting allows you to override the default behavior of Dex and enforce the mappings defined in `claimMapping`.
 	OverrideClaimMapping bool `json:"overrideClaimMapping"` // defaults to false
-
 }
 
 // Domains that don't support basic auth. golang.org/x/oauth2 has an internal
@@ -202,7 +201,6 @@ type buildkiteConnector struct {
 	overrideClaimMapping      bool
 	preferredUsernameKey      string
 	emailKey                  string
-	groupsKey                 string
 }
 
 func (c *buildkiteConnector) Close() error {

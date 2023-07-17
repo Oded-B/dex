@@ -150,10 +150,8 @@ jobs:
     name: Artifacts
     uses: ./.github/workflows/artifacts.yaml
     with:
-      publish: ${{ github.event_name == 'push' }}
-    secrets:
-      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      # publish: ${{ github.event_name == 'push' }}
+      publish: true
     permissions:
       contents: read
       packages: write

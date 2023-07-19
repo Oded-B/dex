@@ -295,7 +295,7 @@ func TestHandleCallback(t *testing.T) {
 			userNameKey:        "", // not configured
 			expectUserID:       "subvalue",
 			expectUserName:     "namevalue",
-			expectGroups:       []string{"group1", "gh::acme::pipeline-one", "tfe-acme-foobar"},
+			expectGroups:       []string{"group1", "gh::acme::pipeline-one", "tfe-acme-foobar", "bk-emailvalue"},
 			expectedEmailField: "emailvalue",
 			claimConcatenations: []ClaimConcatenation{
 				{
@@ -322,6 +322,15 @@ func TestHandleCallback(t *testing.T) {
 					Delimiter: "-",
 					Prefix:    "tfe",
 				},
+				{
+					ClaimList: []string{
+						"non-string-claim",
+						"non-string-claim2",
+						"email",
+					},
+					Delimiter: "-",
+					Prefix:    "bk",
+				},
 			},
 
 			token: map[string]interface{}{
@@ -333,6 +342,11 @@ func TestHandleCallback(t *testing.T) {
 				"email":                "emailvalue",
 				"email_verified":       true,
 				"claim-with-delimiter": "foo-bar",
+				"non-string-claim": []string{
+					"element1",
+					"element2",
+				},
+				"non-string-claim2": 666,
 			},
 		},
 	}

@@ -435,13 +435,14 @@ func (c *oidcConnector) createIdentity(ctx context.Context, identity connector.I
 
 	for _, cc := range c.claimConcatenations {
 		newElement := ""
-		for i, clm := range cc.ClaimList {
-			claimValue, ok := claims[clm]
-			// Removing the delimiier string from the concatenated claim to ensure resulting claim structure
-			// is in full control of Dex operator
-			claimCleanedValue := strings.ReplaceAll(fmt.Sprintf("%v", claimValue), cc.Delimiter, "")
-			if ok {
-				if i == 0 {
+		for _, clm := range cc.ClaimList {
+
+			// Non string claim value are ignored, concatenating them doesn't really make any sense
+			if claimValue, ok := claims[clm].(string); ok {
+				// Removing the delimiier string from the concatenated claim to ensure resulting claim structure
+				// is in full control of Dex operator
+				claimCleanedValue := strings.ReplaceAll(claimValue, cc.Delimiter, "")
+				if newElement == "" {
 					newElement = cc.Prefix + cc.Delimiter + claimCleanedValue
 				} else {
 					newElement = newElement + cc.Delimiter + claimCleanedValue

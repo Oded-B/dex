@@ -436,7 +436,6 @@ func (c *oidcConnector) createIdentity(ctx context.Context, identity connector.I
 	for _, cc := range c.claimConcatenations {
 		newElement := ""
 		for _, clm := range cc.ClaimList {
-
 			// Non string claim value are ignored, concatenating them doesn't really make any sense
 			if claimValue, ok := claims[clm].(string); ok {
 				// Removing the delimiier string from the concatenated claim to ensure resulting claim structure
